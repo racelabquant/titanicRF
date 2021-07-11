@@ -49,10 +49,6 @@ exp(coef(mylogit))
 ## odds ratios and 95% CI
 exp(cbind(OR = coef(mylogit), confint(mylogit)))
 
-#test1 <- with(mydata, data.frame(gre = mean(gre), gpa = mean(gpa), rank = factor(1:4)))
-## view data frame
-#newdata1
-
 # prediction model (on original data set to test)
 pred.titanic <- predict(mylogit, newdata = mydata, type = "response")
 
@@ -82,3 +78,56 @@ tree_spec <- decision_tree() %>%
   set_mode("classification")
 
 tree_spec %>% fit(formula = Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data=mydata)
+tree_spec %>% fit(formula = Survived ~ Pclass + Sex + Age + SibSp, data=mydata)
+
+
+
+# splits the data automatically
+titanic_split <- initial_split(mydata,prop=0.8)
+titanic_split # shows the split numbers
+titanic_train <- training(titanic_split)
+titanic_test <- testing(titanic_split)
+nrow(titanic_train)/nrow(mydata) # verify % split
+
+# check to avoid class imbalances
+counts_train <- table(titanic_train$Survived)
+counts_train
+prop_surv_train <- counts_train["1"]/sum(counts_train)
+prop_surv_train
+counts_test <- table(titanic_test$Survived)
+counts_test
+prop_surv_test <- counts_test["1"]/sum(counts_test)
+prop_surv_test
+# if the proportions don't match then re-run the initial_split function
+# with a strata argument initial_split(mydata, prop=0.8, strata=outcome)
+example <- initial_split(mydata, prop=0.8, strata=Survived)
+example
+
+##### Predicting new data
+# Arguments (1. Trained Model, 2. data set to predict on, 3. prediction type
+# labels or probabilities)
+predict(tree_spec, new_data=titanic_test, type = "class")
+
+
+#### Create the confusion matrix
+
+# combine predictions and truth values
+pred_combined <- predictions %>%
+  mutate(true_class = test_data$outcome)
+
+pred_combined
+
+# calculate the confusion matrix..three arguments needed for conf_mat
+# conf_mat(data, estimate, truth)
+conf_mat(data=pred_combined,
+         estimate = .pred_class,
+         truth = true_class)
+
+# call yardstick library to automatically compute confusion matrices
+# accuracy(data, estimate, truth) - it outputs a tibble
+library(yardstick)
+accuracy(pred_combined,
+         estimate = .pred_class,
+         truth = true_class)
+
+

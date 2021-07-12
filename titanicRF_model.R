@@ -1,6 +1,13 @@
 library(aod)
 library(ggplot2)
 library(dbplyr)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+library(pander)
+library(caTools)
+library(rattle)
+library(RColorBrewer)
 
 mydata <- read.csv("G:/My Drive/Research Clients/RaceLab/Data/Testing/titanic_munged.csv")
 ## view the first few rows of the data
@@ -27,6 +34,12 @@ mydata$Sex <- factor(mydata$Sex)
 mydata$Survived <- factor(mydata$Survived)
 mydata$Pclass <- factor(mydata$Pclass)
 mydata$Embarked <- factor(mydata$Embarked)
+
+k <- ggplot(mydata, aes(Survived))
+k + geom_bar(aes( fill = Sex), width=.85, colour="darkgreen") + scale_fill_brewer() +
+  ylab("Survival Count (Genderwise)") +
+  xlab("Survived: No = 0, Yes = 1") +
+  ggtitle("Titanic Disaster: Gender Vs. Survival (Training Dataset")
 
 # first logit
 mylogit <- glm(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data = mydata, family = "binomial")
@@ -67,7 +80,48 @@ predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
 # Model accuracy
 mean(predicted.classes == mydata$Survived)
 
-# Random Forest
+### DECISION TREE ######
+formula <- Survived ~ Sex + Pclass + Age
+
+# Split the training data set so there is a test set
+train_split <- initial_split(mydata,prop=0.8)
+train_split # shows the split numbers
+t_train <- training(train_split)
+t_test <- testing(train_split)
+nrow(t_train)/nrow(mydata) # verify % split
+
+# Build the decision tree
+dtree <- rpart(formula, data=t_train, method="class")
+
+# Measure Performance on the Training Data
+dtree_tr_predict <- predict(dtree, newdata=t_train, type="class")
+dtree_tr_predict.t <- table(t_train$Survived, dtree_tr_predict)
+# Model Accuracy
+dtree_tr_accuracy <- (dtree_tr_predict.t[1, 1] + dtree_tr_predict.t[2, 2]) / sum(dtree_tr_predict.t)
+# Print accuracy in Prediction
+cat("Model Accuracy on Sub sample on training data: ", dtree_tr_accuracy)
+
+# Measure Performance on the Test Data
+dtree_te_predict <- predict(dtree, newdata=t_test, type="class")
+dtree_te_predict.t <- table(t_test$Survived, dtree_te_predict)
+# Model Accuracy
+dtree_testing_accuracy <- (dtree_te_predict.t[1, 1] + dtree_te_predict.t[2, 2]) / sum(dtree_te_predict.t)
+# Print accuracy
+cat("Model Accuracy in Prediction: ", dtree_testing_accuracy)
+
+# Plot the Decision Tree
+fancyRpartPlot(dtree)
+
+
+### RANDOM FOREST ######
+
+
+
+
+
+
+
+# Other forms of decision tree
 library(tidymodels)
 # specify model settings
 decision_tree() %>% set_engine("rpart") %>% set_mode("classification")

@@ -1,6 +1,8 @@
 library(aod)
 library(ggplot2)
+library(plyr)
 library(dbplyr)
+library(dplyr)
 library(randomForest)
 library(rpart)
 library(rpart.plot)
@@ -114,11 +116,50 @@ fancyRpartPlot(dtree)
 
 
 ### RANDOM FOREST ######
+# Function to count number of missing values
+nmissing <- function(x) sum(is.na(x))
 
+# Apply the above function to every column in a train dataset
+L <- colwise(nmissing)(t_train) # Turns a function that operates on a vector into a function that operates column-wise on a data.frame
+knitr::kable(L, digits = 2, caption = "Training Data: NA's")
 
+# First convert variables to factors
+t_train$Survived <- as.factor(t_train$Survived)
+#t_train$Pclass <- as.factor(t_train$Pclass)
+t_train$Sex <- as.factor(t_train$Sex)
+#t_train$Parch <- as.factor(t_train$Parch)
+t_train$Embarked <- as.factor(t_train$Embarked)
+#t_train$SibSp <- as.factor(t_train$SibSp)
 
+#t_test$Pclass <- as.factor(t_test$Pclass)
+t_test$Sex <- as.factor(t_test$Sex)
+#t_test$Parch <- as.factor(t_test$Parch)
+t_test$Embarked <- as.factor(t_test$Embarked)
+#t_test$SibSp <- as.factor(t_test$SibSp)
 
+sapply(t_train, class)
+sapply(t_test, class)
 
+# Apply RF
+formula2 <- Survived ~ Pclass + Sex + Age
+
+# Build the decision tree
+my_rf_model <- randomForest(formula2, data = t_train, importance=TRUE, ntree=2000)
+#my_rf_model <- randomForest(formula2, data = train1, importance=TRUE, ntree=2000,proximity=TRUE)
+
+# Variable importance:
+importance(my_rf_model)
+# Plot Variable importance:
+varImpPlot(my_rf_model, main = "RF: Variable Importance")
+
+# Predictions:
+# Prediction using the test set
+my_RF_prediction <- predict(my_rf_model, t_test)
+
+# Modeling Errors (Confusion Matrix):
+options('digits'= 3)
+conf_matrix <- my_rf_model$confusion
+knitr::kable(conf_matrix, digits = 2, caption = "Prediciton Errors: ")
 
 
 # Other forms of decision tree
